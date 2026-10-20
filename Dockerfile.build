@@ -1,0 +1,16 @@
+# Pinned toolchain that built the engine's CUDA libraries shipped in kernelsmith1/sn92-engine:x16:
+# nvcc / crt / cudart 13.2.86 (CUDA 13.2) on Ubuntu 24.04 (GCC 13.3.0-6ubuntu2~24.04.1, binutils 2.42-4ubuntu2.10),
+# CUTLASS v4.2.1 headers at /cutlass.
+FROM ubuntu:24.04 AS cutlass
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+ && git clone --depth 1 --branch v4.2.1 https://github.com/NVIDIA/cutlass.git /cutlass \
+ && test "$(git -C /cutlass rev-parse HEAD)" = f3fde58372d33e9a5650ba7b80fc48b3b49d40c8 \
+ && rm -rf /cutlass/.git
+
+FROM nvidia/cuda:13.2.1-devel-ubuntu24.04@sha256:44a9504c6dfb50b1241464241b02a93871928f373de6f5a644cf5fe9f080aa63
+RUN apt-get update && apt-get install -y --no-install-recommends --allow-downgrades \
+      cuda-nvcc-13-2=13.2.86-1 cuda-crt-13-2=13.2.86-1 cuda-cudart-dev-13-2=13.2.86-1 cuda-cudart-13-2=13.2.86-1 \
+ && rm -rf /var/lib/apt/lists/* \
+ && nvcc --version | grep -q 'V13.2.86' && gcc --version | grep -q '13.3.0-6ubuntu2~24.04.1'
+COPY --from=cutlass /cutlass /cutlass
+WORKDIR /root
